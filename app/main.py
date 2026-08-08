@@ -4,19 +4,24 @@ from fastapi import FastAPI, HTTPException
 
 
 # ---------------------------------------------------------
-# Logging configuration
+# Logging Configuration
 # ---------------------------------------------------------
 
 logging.basicConfig(
     level=logging.INFO,
-    format="%(asctime)s | %(levelname)s | %(name)s | %(message)s"
+    format=(
+        "%(asctime)s | "
+        "%(levelname)s | "
+        "%(name)s | "
+        "%(message)s"
+    )
 )
 
 logger = logging.getLogger("incident-test-app")
 
 
 # ---------------------------------------------------------
-# FastAPI application
+# FastAPI Application
 # ---------------------------------------------------------
 
 app = FastAPI(
@@ -26,7 +31,7 @@ app = FastAPI(
 
 
 # ---------------------------------------------------------
-# API 1 - Home
+# Home
 # ---------------------------------------------------------
 
 @app.get("/")
@@ -40,7 +45,7 @@ def home():
 
 
 # ---------------------------------------------------------
-# API 2 - Health check
+# Health Check
 # ---------------------------------------------------------
 
 @app.get("/health")
@@ -54,14 +59,14 @@ def health():
 
 
 # ---------------------------------------------------------
-# API 3 - Simple calculation
+# Calculate
 # ---------------------------------------------------------
 
 @app.get("/calculate")
 def calculate(a: int, b: int):
 
     logger.info(
-        "Calculate endpoint called with a=%s and b=%s",
+        "Calculate request received | a=%s | b=%s",
         a,
         b
     )
@@ -69,7 +74,7 @@ def calculate(a: int, b: int):
     result = a + b
 
     logger.info(
-        "Calculation successful result=%s",
+        "Calculate request completed | result=%s",
         result
     )
 
@@ -81,21 +86,21 @@ def calculate(a: int, b: int):
 
 
 # ---------------------------------------------------------
-# API 4 - Controlled 404 error
+# User Lookup
 # ---------------------------------------------------------
 
 @app.get("/users/{user_id}")
 def get_user(user_id: int):
 
     logger.info(
-        "Searching for user_id=%s",
+        "User lookup started | user_id=%s",
         user_id
     )
 
     if user_id != 1:
 
         logger.warning(
-            "User not found user_id=%s",
+            "User lookup failed | user_id=%s | reason=user_not_found",
             user_id
         )
 
@@ -104,6 +109,11 @@ def get_user(user_id: int):
             detail="User not found"
         )
 
+    logger.info(
+        "User lookup completed | user_id=%s",
+        user_id
+    )
+
     return {
         "id": 1,
         "name": "Test User"
@@ -111,30 +121,28 @@ def get_user(user_id: int):
 
 
 # ---------------------------------------------------------
-# API 5 - Intentional server error
+# Intentional Error
 # ---------------------------------------------------------
 
 @app.get("/test-error")
 def test_error():
 
     logger.info(
-        "Intentional error endpoint called"
+        "Intentional error endpoint triggered"
     )
 
     try:
 
-        value = 10 / 0
+        result = 10 / 0
 
         return {
-            "result": value
+            "result": result
         }
 
     except Exception:
 
         logger.exception(
-            "Intentional division by zero error"
+            "Unhandled exception occurred | scenario=division_by_zero"
         )
 
         raise
-
-
