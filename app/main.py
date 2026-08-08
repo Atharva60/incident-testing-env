@@ -1,6 +1,19 @@
 import logging
+import os
 
+from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException
+
+
+# ---------------------------------------------------------
+# Load Environment Variables
+# ---------------------------------------------------------
+
+load_dotenv()
+
+APP_NAME = os.getenv("APP_NAME", "incident-testing-env")
+APP_ENV = os.getenv("APP_ENV", "development")
+LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO").upper()
 
 
 # ---------------------------------------------------------
@@ -8,7 +21,7 @@ from fastapi import FastAPI, HTTPException
 # ---------------------------------------------------------
 
 logging.basicConfig(
-    level=logging.INFO,
+    level=getattr(logging, LOG_LEVEL),
     format=(
         "%(asctime)s | "
         "%(levelname)s | "
@@ -17,7 +30,7 @@ logging.basicConfig(
     )
 )
 
-logger = logging.getLogger("incident-test-app")
+logger = logging.getLogger(APP_NAME)
 
 
 # ---------------------------------------------------------
@@ -37,10 +50,15 @@ app = FastAPI(
 @app.get("/")
 def home():
 
-    logger.info("Home endpoint called")
+    logger.info(
+        "Home endpoint called | environment=%s",
+        APP_ENV
+    )
 
     return {
-        "message": "Incident Testing Environment is running"
+        "message": "Incident Testing Environment is running",
+        "app_name": APP_NAME,
+        "environment": APP_ENV
     }
 
 
@@ -51,10 +69,14 @@ def home():
 @app.get("/health")
 def health():
 
-    logger.info("Health check successful")
+    logger.info(
+        "Health check successful | environment=%s",
+        APP_ENV
+    )
 
     return {
-        "status": "healthy"
+        "status": "healthy",
+        "environment": APP_ENV
     }
 
 
@@ -132,7 +154,6 @@ def test_error():
     )
 
     try:
-
         result = 10 / 0
 
         return {
@@ -146,3 +167,4 @@ def test_error():
         )
 
         raise
+    
