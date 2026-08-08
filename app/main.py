@@ -4,6 +4,13 @@ import os
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException
 
+load_dotenv()
+
+from app.database import (
+    check_mongodb_health,
+    connect_to_mongodb
+)
+
 
 # ---------------------------------------------------------
 # Load Environment Variables
@@ -31,6 +38,8 @@ logging.basicConfig(
 )
 
 logger = logging.getLogger(APP_NAME)
+
+mongodb_connected = connect_to_mongodb()
 
 
 # ---------------------------------------------------------
@@ -69,14 +78,32 @@ def home():
 @app.get("/health")
 def health():
 
-    logger.info(
-        "Health check successful | environment=%s",
-        APP_ENV
-    )
+    mongodb_healthy = check_mongodb_health()
+
+    if mongodb_healthy:
+
+        logger.info(
+            "Health check successful | mongodb=connected"
+        )
+
+    else:
+
+        logger.warning(
+            "Health check degraded | mongodb=disconnected"
+        )
 
     return {
-        "status": "healthy",
-        "environment": APP_ENV
+        "status": (
+            "healthy"
+            if mongodb_healthy
+            else "degraded"
+        ),
+        "environment": APP_ENV,
+        "mongodb": (
+            "connected"
+            if mongodb_healthy
+            else "disconnected"
+        )
     }
 
 
@@ -167,4 +194,5 @@ def test_error():
         )
 
         raise
-    
+
+
