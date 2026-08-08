@@ -77,3 +77,9 @@ def check_mongodb_health():
         )
 
         return False
+
+def get_users_collection():
+    if database is None:
+        return None
+
+    return database["users"]

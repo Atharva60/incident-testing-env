@@ -3,12 +3,14 @@ import os
 
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException
+from pymongo.errors import PyMongoError
 
 load_dotenv()
 
 from app.database import (
     check_mongodb_health,
-    connect_to_mongodb
+    connect_to_mongodb,
+    get_users_collection
 )
 
 
@@ -138,36 +140,136 @@ def calculate(a: int, b: int):
 # User Lookup
 # ---------------------------------------------------------
 
-@app.get("/users/{user_id}")
-def get_user(user_id: int):
+@app.post("/users")
+def create_user(name: str, email: str):
 
     logger.info(
-        "User lookup started | user_id=%s",
-        user_id
+        "Create user request received | name=%s | email=%s",
+        name,
+        email
     )
 
-    if user_id != 1:
+    users_collection = get_users_collection()
 
-        logger.warning(
-            "User lookup failed | user_id=%s | reason=user_not_found",
-            user_id
+    if users_collection is None:
+        logger.error(
+            "Create user failed | reason=database_unavailable"
         )
 
         raise HTTPException(
-            status_code=404,
-            detail="User not found"
+            status_code=503,
+            detail="Database unavailable"
         )
 
+    try:
+        existing_user = users_collection.find_one(
+            {"email": email}
+        )
+
+        if existing_user:
+            logger.warning(
+                "Create user rejected | email=%s | reason=user_already_exists",
+                email
+            )
+
+            raise HTTPException(
+                status_code=409,
+                detail="User already exists"
+            )
+
+        user = {
+            "name": name,
+            "email": email
+        }
+
+        result = users_collection.insert_one(user)
+
+        logger.info(
+            "User created successfully | user_id=%s | email=%s",
+            result.inserted_id,
+            email
+        )
+
+        return {
+            "id": str(result.inserted_id),
+            "name": name,
+            "email": email
+        }
+
+    except HTTPException:
+        raise
+
+    except PyMongoError:
+        logger.exception(
+            "Create user failed | email=%s | reason=mongodb_error",
+            email
+        )
+
+        raise HTTPException(
+            status_code=500,
+            detail="Database operation failed"
+        )
+
+@app.get("/users/{email}")
+def get_user(email: str):
+
     logger.info(
-        "User lookup completed | user_id=%s",
-        user_id
+        "User lookup started | email=%s",
+        email
     )
 
-    return {
-        "id": 1,
-        "name": "Test User"
-    }
+    users_collection = get_users_collection()
 
+    if users_collection is None:
+        logger.error(
+            "User lookup failed | reason=database_unavailable"
+        )
+
+        raise HTTPException(
+            status_code=503,
+            detail="Database unavailable"
+        )
+
+    try:
+        user = users_collection.find_one(
+            {"email": email}
+        )
+
+        if not user:
+            logger.warning(
+                "User lookup failed | email=%s | reason=user_not_found",
+                email
+            )
+
+            raise HTTPException(
+                status_code=404,
+                detail="User not found"
+            )
+
+        logger.info(
+            "User lookup successful | email=%s",
+            email
+        )
+
+        return {
+            "id": str(user["_id"]),
+            "name": user["name"],
+            "email": user["email"]
+        }
+
+    except HTTPException:
+        raise
+
+    except PyMongoError:
+        logger.exception(
+            "User lookup failed | email=%s | reason=mongodb_error",
+            email
+        )
+
+        raise HTTPException(
+            status_code=500,
+            detail="Database operation failed"
+        )
 
 # ---------------------------------------------------------
 # Intentional Error
