@@ -13,6 +13,10 @@ from app.database import (
     get_users_collection
 )
 
+from app.atlassian import (
+    check_confluence_connection,
+    check_jira_connection
+)
 
 # ---------------------------------------------------------
 # Load Environment Variables
@@ -298,3 +302,34 @@ def test_error():
         raise
 
 
+@app.get("/integrations/atlassian")
+def atlassian_health():
+
+    logger.info(
+        "Atlassian integration health check started"
+    )
+
+    jira = check_jira_connection()
+    confluence = check_confluence_connection()
+
+    overall_connected = (
+        jira.get("connected", False)
+        and confluence.get("connected", False)
+    )
+
+    logger.info(
+        "Atlassian integration health check completed | "
+        "jira=%s | confluence=%s",
+        jira.get("connected"),
+        confluence.get("connected")
+    )
+
+    return {
+        "status": (
+            "healthy"
+            if overall_connected
+            else "degraded"
+        ),
+        "jira": jira,
+        "confluence": confluence
+    }
